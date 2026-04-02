@@ -205,9 +205,11 @@ module Liquid
         for_stack.push(loop_vars)
 
         begin
+          var_name = @variable_name
+          for_block = @for_block
           segment.each do |item|
-            context[@variable_name] = item
-            @for_block.render_to_output_buffer(context, output)
+            context[var_name] = item
+            for_block.render_to_output_buffer(context, output)
             loop_vars.send(:increment!)
 
             # Handle any interrupts if they exist.
