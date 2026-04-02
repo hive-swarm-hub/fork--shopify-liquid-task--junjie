@@ -35,7 +35,7 @@ module Liquid
       end
       @scopes              = [outer_scope || {}]
       @registers           = registers.is_a?(Registers) ? registers : Registers.new(registers)
-      @errors              = []
+      @errors              = Const::EMPTY_ARRAY
       @partial             = false
       @strict_variables    = false
       @resource_limits     = resource_limits || ResourceLimits.new(environment.default_resource_limits)
@@ -106,23 +106,39 @@ module Liquid
       e = internal_error unless e.is_a?(Liquid::Error)
       e.template_name ||= template_name
       e.line_number   ||= line_number
-      errors.push(e)
+      @errors = [] if @errors.frozen?
+      @errors.push(e)
       exception_renderer.call(e).to_s
     end
 
     def invoke(method, *args)
-      strainer.invoke(method, *args).to_liquid
+      result = strainer.invoke(method, *args)
+      if result.instance_of?(String) || result.instance_of?(Integer) || result.instance_of?(Float) || result.nil?
+        result
+      else
+        result.to_liquid
+      end
     end
 
     # Fast path for single-argument filter invocation (the most common case:
     # {{ value | filter }}) — avoids *args splat allocation.
     def invoke_single(method, input)
-      strainer.invoke_single(method, input).to_liquid
+      result = strainer.invoke_single(method, input)
+      if result.instance_of?(String) || result.instance_of?(Integer) || result.instance_of?(Float) || result.nil?
+        result
+      else
+        result.to_liquid
+      end
     end
 
     # Fast path for two-argument filter invocation (e.g. {{ value | default: 'x' }})
     def invoke_two(method, input, arg1)
-      strainer.invoke_two(method, input, arg1).to_liquid
+      result = strainer.invoke_two(method, input, arg1)
+      if result.instance_of?(String) || result.instance_of?(Integer) || result.instance_of?(Float) || result.nil?
+        result
+      else
+        result.to_liquid
+      end
     end
 
     # Push new local scope on the stack. use <tt>Context#stack</tt> instead
@@ -204,6 +220,7 @@ module Liquid
     end
 
     def evaluate(object)
+      return object if object.instance_of?(String) || object.instance_of?(Integer)
       object.respond_to?(:evaluate) ? object.evaluate(self) : object
     end
 
@@ -218,10 +235,20 @@ module Liquid
         variable = try_variable_find_in_environments(key, raise_on_not_found: raise_on_not_found)
       else
         # Multiple scopes — search through all of them
-        index = @scopes.find_index { |s| s.key?(key) }
+        scopes = @scopes
+        found_scope = nil
+        i = 1
+        len = scopes.length
+        while i < len
+          if scopes[i].key?(key)
+            found_scope = scopes[i]
+            break
+          end
+          i += 1
+        end
 
-        variable = if index
-          lookup_and_evaluate(@scopes[index], key, raise_on_not_found: raise_on_not_found)
+        variable = if found_scope
+          lookup_and_evaluate(found_scope, key, raise_on_not_found: raise_on_not_found)
         else
           try_variable_find_in_environments(key, raise_on_not_found: raise_on_not_found)
         end
@@ -286,17 +313,25 @@ module Liquid
     attr_reader :base_scope_depth
 
     def try_variable_find_in_environments(key, raise_on_not_found:)
-      @environments.each do |environment|
-        found_variable = lookup_and_evaluate(environment, key, raise_on_not_found: raise_on_not_found)
+      envs = @environments
+      i = 0
+      len = envs.length
+      while i < len
+        found_variable = lookup_and_evaluate(envs[i], key, raise_on_not_found: raise_on_not_found)
         if !found_variable.nil? || @strict_variables && raise_on_not_found
           return found_variable
         end
+        i += 1
       end
-      @static_environments.each do |environment|
-        found_variable = lookup_and_evaluate(environment, key, raise_on_not_found: raise_on_not_found)
+      static_envs = @static_environments
+      i = 0
+      len = static_envs.length
+      while i < len
+        found_variable = lookup_and_evaluate(static_envs[i], key, raise_on_not_found: raise_on_not_found)
         if !found_variable.nil? || @strict_variables && raise_on_not_found
           return found_variable
         end
+        i += 1
       end
       nil
     end

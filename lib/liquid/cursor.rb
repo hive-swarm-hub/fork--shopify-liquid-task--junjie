@@ -33,6 +33,23 @@ module Liquid
     LCURLY  = 123 # '{'
     RCURLY  = 125 # '}'
 
+    TAG_NAME_INTERN = Hash.new { |h, k| h[k] = k.freeze }.tap do |h|
+      %w[if elsif else endif unless endunless case when endcase for endfor
+         break continue tablerow endtablerow assign capture endcapture
+         cycle decrement increment include render echo comment endcomment
+         raw endraw liquid doc enddoc inline_comment #].each { |n| h[n] = n.freeze }
+    end
+
+    TAG_INT_KEYS = {}
+    %w[if for raw else echo case when endif elsif break cycle
+       endfor assign render liquid endraw include comment capture
+       endcase unless].each do |name|
+      key = 0
+      name.each_byte { |b| key = (key << 8) | b }
+      TAG_INT_KEYS[key] = name.freeze
+    end
+    TAG_INT_KEYS.freeze
+
     attr_reader :ss
 
     def initialize(source)
@@ -127,7 +144,8 @@ module Liquid
         @ss.scan_byte
         "#"
       else
-        scan_id
+        s = @ss.scan(ID_REGEX)
+        s ? TAG_NAME_INTERN[s] : nil
       end
     end
 
@@ -201,12 +219,55 @@ module Liquid
     }.freeze
 
     # Scan a comparison operator. Returns frozen string or nil.
-    # Regex for comparison operators
     COMPARISON_OP_REGEX = /==|!=|<>|<=|>=|<|>|contains(?!\w)/
+    CONTAINS_FROZEN = 'contains'.freeze
+    CONTAINS_REGEX = /contains(?!\w)/
 
     def scan_comparison_op
-      if (op = @ss.scan(COMPARISON_OP_REGEX))
-        COMPARISON_OPS[op]
+      b = @ss.peek_byte
+      case b
+      when 61 # '='
+        @ss.scan_byte
+        if @ss.peek_byte == 61
+          @ss.scan_byte
+          '=='
+        else
+          @ss.pos -= 1
+          nil
+        end
+      when 33 # '!'
+        @ss.scan_byte
+        if @ss.peek_byte == 61
+          @ss.scan_byte
+          '!='
+        else
+          @ss.pos -= 1
+          nil
+        end
+      when 60 # '<'
+        @ss.scan_byte
+        nb = @ss.peek_byte
+        if nb == 61
+          @ss.scan_byte
+          '<='
+        elsif nb == 62
+          @ss.scan_byte
+          '<>'
+        else
+          '<'
+        end
+      when 62 # '>'
+        @ss.scan_byte
+        if @ss.peek_byte == 61
+          @ss.scan_byte
+          '>='
+        else
+          '>'
+        end
+      when 99 # 'c' — possible 'contains'
+        if @ss.scan(CONTAINS_REGEX)
+          CONTAINS_FROZEN
+        end
       end
     end
 
@@ -249,7 +310,18 @@ module Liquid
       else
         return
       end
-      tag_name = token.byteslice(name_start, pos - name_start)
+      name_len = pos - name_start
+      tag_name = nil
+      if name_len <= 7
+        int_key = 0
+        j = name_start
+        while j < pos
+          int_key = (int_key << 8) | token.getbyte(j)
+          j += 1
+        end
+        tag_name = TAG_INT_KEYS[int_key]
+      end
+      tag_name ||= TAG_NAME_INTERN[token.byteslice(name_start, name_len)]
 
       # Skip whitespace after tag name, count newlines
       while pos < len

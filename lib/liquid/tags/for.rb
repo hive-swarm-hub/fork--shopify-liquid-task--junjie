@@ -115,11 +115,22 @@ module Liquid
       c.skip_ws
 
       # Parse limit:/offset: if present
-      if !c.eos? && markup.include?(':')
-        rest = c.slice(c.pos, markup.bytesize - c.pos)
-        rest.scan(TagAttributes) do |key, value|
-          set_attribute(key, value)
+      while !c.eos?
+        c.skip_ws
+        break if c.eos?
+        if c.peek_byte == Cursor::COMMA
+          c.scan_byte
+          c.skip_ws
         end
+        key = c.scan_id
+        break unless key
+        c.skip_ws
+        break unless c.peek_byte == Cursor::COLON
+        c.scan_byte
+        c.skip_ws
+        value = c.scan_fragment
+        break unless value
+        set_attribute(key, value)
       end
     end
 
@@ -187,14 +198,13 @@ module Liquid
       for_stack = context.registers[:for_stack] ||= []
       length    = segment.length
 
-      context.stack do
-        loop_vars = Liquid::ForloopDrop.new(@name, length, for_stack[-1])
+      loop_vars = Liquid::ForloopDrop.new(@name, length, for_stack[-1])
+      scope = { 'forloop' => loop_vars, @variable_name => nil }
 
+      context.stack(scope) do
         for_stack.push(loop_vars)
 
         begin
-          context['forloop'] = loop_vars
-
           segment.each do |item|
             context[@variable_name] = item
             @for_block.render_to_output_buffer(context, output)

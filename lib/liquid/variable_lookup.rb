@@ -145,11 +145,16 @@ module Liquid
     end
 
     def evaluate(context)
-      name   = context.evaluate(@name)
+      name = @name.instance_of?(String) ? @name : context.evaluate(@name)
       object = context.find_variable(name)
 
-      @lookups.each_index do |i|
-        lookup = @lookups[i]
+      lookups = @lookups
+      return object if lookups.length == 0
+
+      i = 0
+      len = lookups.length
+      while i < len
+        lookup = lookups[i]
         key = lookup.instance_of?(String) ? lookup : context.evaluate(lookup)
 
         # Cast "key" to its liquid value to enable it to act as a primitive value
@@ -196,6 +201,7 @@ module Liquid
           return nil unless context.strict_variables
           raise Liquid::UndefinedVariable, "undefined variable #{key}"
         end
+        i += 1
       end
 
       object

@@ -183,20 +183,34 @@ module Liquid
       # return this as the result.
       return context.evaluate(left) if op.nil?
 
-      left  = Liquid::Utils.to_liquid_value(context.evaluate(left))
-      right = Liquid::Utils.to_liquid_value(context.evaluate(right))
+      left  = context.evaluate(left)
+      left = left.to_liquid_value if left.respond_to?(:to_liquid_value)
+      right = context.evaluate(right)
+      right = right.to_liquid_value if right.respond_to?(:to_liquid_value)
 
-      operation = self.class.operators[op] || raise(Liquid::ArgumentError, "Unknown operator #{op}")
-
-      if operation.respond_to?(:call)
-        operation.call(self, left, right)
-      elsif left.respond_to?(operation) && right.respond_to?(operation) && !left.is_a?(Hash) && !right.is_a?(Hash)
-        begin
-          left.send(operation, right)
-        rescue ::ArgumentError => e
-          raise Liquid::ArgumentError, e.message
+      case op
+      when '=='
+        equal_variables(left, right)
+      when '!='
+        !equal_variables(left, right)
+      when '<', '>', '>=', '<='
+        if left.respond_to?(op) && right.respond_to?(op) && !left.is_a?(Hash) && !right.is_a?(Hash)
+          left.send(op, right)
+        end
+      else
+        operation = self.class.operators[op] || raise(Liquid::ArgumentError, "Unknown operator #{op}")
+        if operation.respond_to?(:call)
+          operation.call(self, left, right)
+        elsif left.respond_to?(operation) && right.respond_to?(operation) && !left.is_a?(Hash) && !right.is_a?(Hash)
+          begin
+            left.send(operation, right)
+          rescue ::ArgumentError => e
+            raise Liquid::ArgumentError, e.message
+          end
         end
       end
+    rescue ::ArgumentError => e
+      raise Liquid::ArgumentError, e.message
     end
 
     def deprecated_default_context

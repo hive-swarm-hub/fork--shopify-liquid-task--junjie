@@ -219,7 +219,11 @@ module Liquid
       parse_context = if options.is_a?(ParseContext)
         options
       else
-        opts = options.key?(:environment) ? options : options.merge(environment: @environment)
+        opts = if options.key?(:environment) || @environment.equal?(Environment.default)
+          options
+        else
+          options.merge(environment: @environment)
+        end
         ParseContext.new(opts)
       end
 
