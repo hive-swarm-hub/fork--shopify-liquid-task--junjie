@@ -112,13 +112,22 @@ module Liquid
       @parse_context = parse_context
       @line_number   = parse_context.line_number
 
-      # Fast path: try to parse without going through Lexer → Parser
-      # Skip for strict2/rigid modes which require different parsing
-      # Fast path only for lax/warn modes — strict modes need full error checking
+      # Thread-local Variable parse cache — reuses parsed name+filters across templates
       error_mode = parse_context.error_mode
-      if error_mode == :strict2 || error_mode == :rigid || error_mode == :strict || !try_fast_parse(markup, parse_context)
-        strict_parse_with_error_mode_fallback(markup)
+      if error_mode != :strict2 && error_mode != :rigid && error_mode != :strict
+        var_cache = (Thread.current[:_liq_var_cache] ||= {})
+        if (cached = var_cache[markup])
+          @name = cached[0]
+          @filters = cached[1]
+          return
+        end
+        if try_fast_parse(markup, parse_context)
+          var_cache[markup] = [@name, @filters].freeze
+          return
+        end
       end
+
+      strict_parse_with_error_mode_fallback(markup)
     end
 
     private def try_fast_parse(markup, parse_context)
