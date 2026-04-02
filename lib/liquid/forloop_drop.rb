@@ -80,6 +80,22 @@ module Liquid
       @index == @length - 1
     end
 
+    # Fast dispatch for common forloop properties — avoids invokable? Set lookup
+    def [](method_or_key)
+      case method_or_key
+      when 'index'     then @index + 1
+      when 'index0'    then @index
+      when 'first'     then @index == 0
+      when 'last'      then @index == @length - 1
+      when 'length'    then @length
+      when 'rindex'    then @length - @index
+      when 'rindex0'   then @length - @index - 1
+      when 'parentloop' then @parentloop
+      else
+        invoke_drop(method_or_key)
+      end
+    end
+
     protected
 
     def increment!

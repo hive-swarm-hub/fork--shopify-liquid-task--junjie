@@ -53,10 +53,15 @@ module Liquid
     def render_to_output_buffer(context, output)
       idx = 0
       blocks = @blocks
-      while idx < blocks.length
+      len = blocks.length
+      while idx < len
         block = blocks[idx]
         result = block.evaluate(context)
-        result = result.to_liquid_value if result.respond_to?(:to_liquid_value)
+        unless result.instance_of?(String) || result.instance_of?(Integer) || result.instance_of?(Float) ||
+               result.instance_of?(TrueClass) || result.instance_of?(FalseClass) || result.nil? ||
+               result.instance_of?(Array) || result.instance_of?(Hash)
+          result = result.to_liquid_value if result.respond_to?(:to_liquid_value)
+        end
 
         if result
           return block.attachment.render_to_output_buffer(context, output)

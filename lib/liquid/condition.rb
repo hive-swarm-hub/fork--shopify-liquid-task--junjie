@@ -74,9 +74,11 @@ module Liquid
       loop do
         case condition.child_relation
         when :or
-          break if Liquid::Utils.to_liquid_value(result)
+          r = result.respond_to?(:to_liquid_value) ? result.to_liquid_value : result
+          break if r
         when :and
-          break unless Liquid::Utils.to_liquid_value(result)
+          r = result.respond_to?(:to_liquid_value) ? result.to_liquid_value : result
+          break unless r
         else
           break
         end
