@@ -20,7 +20,8 @@ module Liquid
         @template_options = options.dup
         @locale = @template_options[:locale] ||= I18n.default
       end
-      @warnings = []
+      @warnings = (Thread.current[:_liq_warnings] ||= [])
+      @warnings.clear
 
       # Reuse StringScanner and Cursor across parses via Thread-local storage.
       @string_scanner = (Thread.current[:_liq_ss] ||= StringScanner.new(""))
