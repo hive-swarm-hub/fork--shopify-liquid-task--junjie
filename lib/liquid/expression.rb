@@ -61,9 +61,13 @@ module Liquid
         if cache
           if cache.key?(markup)
             return cache[markup]
+          elsif (cached = tl_cache[markup])
+            cache[markup] = cached
+            return cached
           end
           result = inner_parse(markup, ss, cache).freeze
           cache[markup] = result
+          tl_cache[markup] = result
           result
         else
           if (cached = tl_cache[markup])

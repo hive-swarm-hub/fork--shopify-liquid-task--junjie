@@ -27,12 +27,11 @@ module Liquid
       @string_scanner.string = ""
 
       @expression_cache = if options[:expression_cache].nil?
-        # Use thread-local cache as primary expression cache to avoid per-parse Hash allocation
-        (Thread.current[:_liq_expr_cache] ||= {})
+        {}
       elsif options[:expression_cache].respond_to?(:[]) && options[:expression_cache].respond_to?(:[]=)
         options[:expression_cache]
       elsif options[:expression_cache]
-        (Thread.current[:_liq_expr_cache] ||= {})
+        {}
       end
 
       @cursor = (Thread.current[:_liq_cursor] ||= Cursor.new(""))
