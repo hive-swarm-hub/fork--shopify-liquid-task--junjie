@@ -36,18 +36,22 @@ module Liquid
         return unless markup
 
         # Only strip if there's leading/trailing whitespace (avoids allocation)
-        first_byte = markup.getbyte(0)
-        if first_byte == 32 || first_byte == 9 || first_byte == 10 || first_byte == 13 # space, tab, \n, \r
+        fb = markup.getbyte(0)
+        if fb == 32 || fb == 9 || fb == 10 || fb == 13 # space, tab, \n, \r
           markup = markup.strip
+          fb = markup.getbyte(0)
         else
           last_byte = markup.getbyte(markup.bytesize - 1)
-          markup = markup.strip if last_byte == 32 || last_byte == 9 || last_byte == 10 || last_byte == 13
+          if last_byte == 32 || last_byte == 9 || last_byte == 10 || last_byte == 13
+            markup = markup.strip
+          end
         end
 
-        if (markup.start_with?('"') && markup.end_with?('"')) ||
-          (markup.start_with?("'") && markup.end_with?("'"))
-          return markup.byteslice(1, markup.bytesize - 2)
-        elsif LITERALS.key?(markup)
+        len = markup.bytesize
+        if len >= 2 && (fb == 34 || fb == 39) && markup.getbyte(len - 1) == fb
+          return markup.byteslice(1, len - 2)
+        end
+        if LITERALS.key?(markup)
           return LITERALS[markup]
         end
 
