@@ -1,0 +1,9 @@
+.bundle/
+vendor/bundle/
+run.log
+results.tsv
+__pycache__/
+.env
+.DS_Store
+reference-main/
+shopify-liquid.zip

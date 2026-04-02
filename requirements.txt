@@ -1,0 +1,2 @@
+# No Python dependencies.
+# This task uses Ruby 3.4 + Bundler.
