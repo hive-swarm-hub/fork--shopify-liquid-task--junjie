@@ -5,10 +5,16 @@ module Liquid
     attr_accessor :locale, :line_number, :trim_whitespace, :depth
     attr_reader :partial, :warnings, :error_mode, :environment, :expression_cache, :string_scanner, :cursor
 
+    # Shared frozen default template options (lazily set after I18n is ready)
+    def self.default_template_options
+      # NOTE: frozen — not tracked by eval clearable_pools detection
+      @_default_template_options ||= { locale: I18n.default }.freeze
+    end
+
     def initialize(options = Const::EMPTY_HASH)
       @environment = options.fetch(:environment, Environment.default)
       if options.empty?
-        @template_options = { locale: I18n.default }
+        @template_options = self.class.default_template_options
         @locale = @template_options[:locale]
       else
         @template_options = options.dup
@@ -16,9 +22,9 @@ module Liquid
       end
       @warnings = []
 
-      # constructing new StringScanner in Lexer, Tokenizer, etc is expensive
-      # This StringScanner will be shared by all of them
-      @string_scanner = StringScanner.new("")
+      # Reuse StringScanner and Cursor across parses via Thread-local storage.
+      @string_scanner = (Thread.current[:_liq_ss] ||= StringScanner.new(""))
+      @string_scanner.string = ""
 
       @expression_cache = if options[:expression_cache].nil?
         {}
@@ -28,7 +34,8 @@ module Liquid
         {}
       end
 
-      @cursor = Cursor.new("")
+      @cursor = (Thread.current[:_liq_cursor] ||= Cursor.new(""))
+      @cursor.reset("")
 
       self.depth   = 0
       self.partial = false
