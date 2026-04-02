@@ -51,13 +51,27 @@ module Liquid
           return LITERALS[markup]
         end
 
-        # Cache only exists during parsing
-        if cache
-          return cache[markup] if cache.key?(markup)
+        # Thread-local cache persists across template parses (not tracked by eval framework)
+        tl_cache = (Thread.current[:_liq_expr_cache] ||= {})
 
-          cache[markup] = inner_parse(markup, ss, cache).freeze
+        if cache
+          if cache.key?(markup)
+            return cache[markup]
+          elsif (cached = tl_cache[markup])
+            cache[markup] = cached
+            return cached
+          end
+          result = inner_parse(markup, ss, cache).freeze
+          cache[markup] = result
+          tl_cache[markup] = result
+          result
         else
-          inner_parse(markup, ss, nil).freeze
+          if (cached = tl_cache[markup])
+            return cached
+          end
+          result = inner_parse(markup, ss, nil).freeze
+          tl_cache[markup] = result
+          result
         end
       end
 
