@@ -27,11 +27,15 @@ module Liquid
       @string_scanner.string = ""
 
       @expression_cache = if options[:expression_cache].nil?
-        {}
+        ec = (Thread.current[:_liq_per_parse_cache] ||= {})
+        ec.clear
+        ec
       elsif options[:expression_cache].respond_to?(:[]) && options[:expression_cache].respond_to?(:[]=)
         options[:expression_cache]
       elsif options[:expression_cache]
-        {}
+        ec = (Thread.current[:_liq_per_parse_cache] ||= {})
+        ec.clear
+        ec
       end
 
       @cursor = (Thread.current[:_liq_cursor] ||= Cursor.new(""))
