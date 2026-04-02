@@ -100,7 +100,8 @@ module Liquid
     # @liquid_syntax string | escape
     # @liquid_return [string]
     def escape(input)
-      CGI.escapeHTML(Utils.to_s(input)) unless input.nil?
+      return if input.nil?
+      CGI.escapeHTML(input.instance_of?(String) ? input : Utils.to_s(input))
     end
     alias_method :h, :escape
 

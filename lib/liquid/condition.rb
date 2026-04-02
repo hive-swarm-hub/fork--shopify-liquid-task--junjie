@@ -185,10 +185,8 @@ module Liquid
       # return this as the result.
       return context.evaluate(left) if op.nil?
 
-      left  = context.evaluate(left)
-      left = left.to_liquid_value if left.respond_to?(:to_liquid_value)
-      right = context.evaluate(right)
-      right = right.to_liquid_value if right.respond_to?(:to_liquid_value)
+      left  = Liquid::Utils.to_liquid_value(context.evaluate(left))
+      right = Liquid::Utils.to_liquid_value(context.evaluate(right))
 
       case op
       when '=='
