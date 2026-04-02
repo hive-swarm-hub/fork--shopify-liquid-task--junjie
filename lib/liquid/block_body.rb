@@ -253,8 +253,11 @@ module Liquid
       # Check if we need per-node write score tracking
       check_write = resource_limits.render_length_limit || resource_limits.last_capture_length
 
+      nodelist = @nodelist
+      len = nodelist.length
       idx = 0
-      while (node = @nodelist[idx])
+      while idx < len
+        node = nodelist[idx]
         if node.instance_of?(String)
           output << node
         else
