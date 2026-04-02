@@ -7,9 +7,13 @@ module Liquid
 
     def initialize(options = Const::EMPTY_HASH)
       @environment = options.fetch(:environment, Environment.default)
-      @template_options = options ? options.dup : {}
-
-      @locale   = @template_options[:locale] ||= I18n.new
+      if options.empty?
+        @template_options = { locale: I18n.default }
+        @locale = @template_options[:locale]
+      else
+        @template_options = options.dup
+        @locale = @template_options[:locale] ||= I18n.default
+      end
       @warnings = []
 
       # constructing new StringScanner in Lexer, Tokenizer, etc is expensive

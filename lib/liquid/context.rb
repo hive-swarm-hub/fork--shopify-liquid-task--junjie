@@ -281,7 +281,7 @@ module Liquid
 
       value = obj[key]
 
-      if value.is_a?(Proc) && obj.respond_to?(:[]=)
+      if value.instance_of?(Proc) && obj.respond_to?(:[]=)
         obj[key] = value.arity == 0 ? value.call : value.call(self)
       else
         value
