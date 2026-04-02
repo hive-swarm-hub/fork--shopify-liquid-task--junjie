@@ -24,9 +24,7 @@ module Liquid
       when :strict
         raise
       when :warn
-        w = parse_context.warnings
-        parse_context.instance_variable_set(:@warnings, w = []) if w.frozen?
-        w << e
+        parse_context.warnings << e
       end
       lax_parse(markup)
     end
@@ -39,9 +37,7 @@ module Liquid
         begin
           strict2_parse_with_error_context(markup)
         rescue SyntaxError => e
-          w = parse_context.warnings
-          parse_context.instance_variable_set(:@warnings, w = []) if w.frozen?
-          w << e
+          parse_context.warnings << e
           lax_parse(markup)
         end
       elsif mode == :strict

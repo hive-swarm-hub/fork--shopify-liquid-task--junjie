@@ -10,7 +10,7 @@ module Liquid
       @template_options = options ? options.dup : {}
 
       @locale   = @template_options[:locale] ||= I18n.new
-      @warnings = Const::EMPTY_ARRAY  # lazy — unfrozen on first warning push
+      @warnings = []
 
       # constructing new StringScanner in Lexer, Tokenizer, etc is expensive
       # This StringScanner will be shared by all of them
