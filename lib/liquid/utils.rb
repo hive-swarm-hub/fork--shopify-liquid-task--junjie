@@ -94,6 +94,11 @@ module Liquid
     end
 
     def self.to_liquid_value(obj)
+      # Fast path: primitive types never have to_liquid_value
+      case obj
+      when String, Integer, Float, NilClass, TrueClass, FalseClass, Array, Hash
+        return obj
+      end
       # Enable "obj" to represent itself as a primitive value like integer, string, or boolean
       return obj.to_liquid_value if obj.respond_to?(:to_liquid_value)
 
