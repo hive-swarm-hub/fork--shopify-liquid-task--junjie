@@ -35,15 +35,24 @@ module Liquid
       def parse(markup, ss = StringScanner.new(""), cache = nil)
         return unless markup
 
-        # Only strip if there's leading/trailing whitespace (avoids allocation)
+        # Byte-level strip — avoids String#strip allocation when possible
+        mlen = markup.bytesize
         fb = markup.getbyte(0)
-        if fb == 32 || fb == 9 || fb == 10 || fb == 13 # space, tab, \n, \r
-          markup = markup.strip
+        if fb == 32 || fb == 9 || fb == 10 || fb == 13
+          # Skip leading whitespace
+          s = 0
+          s += 1 while s < mlen && ((b = markup.getbyte(s)) == 32 || b == 9 || b == 10 || b == 13)
+          # Skip trailing whitespace
+          e = mlen - 1
+          e -= 1 while e >= s && ((b = markup.getbyte(e)) == 32 || b == 9 || b == 10 || b == 13)
+          markup = markup.byteslice(s, e - s + 1)
           fb = markup.getbyte(0)
         else
-          last_byte = markup.getbyte(markup.bytesize - 1)
+          last_byte = markup.getbyte(mlen - 1)
           if last_byte == 32 || last_byte == 9 || last_byte == 10 || last_byte == 13
-            markup = markup.strip
+            e = mlen - 2
+            e -= 1 while e >= 0 && ((b = markup.getbyte(e)) == 32 || b == 9 || b == 10 || b == 13)
+            markup = markup.byteslice(0, e + 1)
           end
         end
 
